@@ -55,6 +55,8 @@ Read the relevant reference files based on the task:
 | Setting up Gradle build files | `references/architecture.md` (Section 8) |
 | Implementing a specific module's business logic | `references/modules.md` |
 | Need the full Kafka event catalog or gRPC service map | `references/modules.md` (Sections 9-10) |
+| Implementing any design pattern (validation, state, saga...) | `references/design-patterns.md` |
+| Need pattern code templates or location map | `references/design-patterns.md` (bottom section) |
 
 ## Core Architecture Decisions (always follow these)
 
@@ -81,6 +83,16 @@ All Redis operations go through `common-cache` module's `CacheService` interface
 - **Privacy-first**: No bank connections, user self-inputs data
 - **Notify, don't block**: Alerts only, never prevent transactions
 - **Don't annoy**: No duplicate alerts, allow pre-adjustment
+
+### 8. Design Patterns (20 total)
+This project intentionally uses 20 design patterns — all solving real problems, none forced.
+Read `references/design-patterns.md` for full code templates and location map.
+
+**Core (already in architecture)**:
+CQRS, Mediator, Template Method, Strategy, Adapter, Builder, Repository, Observer, Factory Method
+
+**Applied in business logic**:
+Specification (query filters), State (status transitions), Chain of Responsibility (validation pipeline), Decorator (handler cross-cutting), Saga (distributed transactions), Circuit Breaker (resilience), Prototype (budget cloning), Composite (expense aggregation), Proxy (cache-first access), Null Object (notification fallback), Singleton (Spring beans)
 
 ## Quick Reference: Project Structure
 
@@ -114,8 +126,7 @@ personal-finance-project/                     # repo root
     │   ├── recurring-bill-service/
     │   ├── saving-service/                   # no adapter
     │   ├── api-gateway/
-    │   ├── config-service/                   # Spring Cloud Config Server
-    │   └── discovery-service/                # Eureka Server (renamed from eureka-server)
+    │   └── eureka-server/
     └── infrastructure/
 ```
 
