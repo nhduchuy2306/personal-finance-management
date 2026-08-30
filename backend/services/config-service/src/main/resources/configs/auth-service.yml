@@ -10,5 +10,6 @@ app:
     secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-must-be-long-enough}
     access-token-expiry: 1800000
     refresh-token-expiry: 604800000
+    issuer: personal-finance
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN:}
