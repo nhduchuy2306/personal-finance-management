@@ -149,7 +149,7 @@ public class RedisCacheService implements CacheService {
   @Override
   public void sAdd(String key, String... values) {
     try {
-      redisTemplate.opsForSet().add(key, values);
+      redisTemplate.opsForSet().add(key, (Object[])values);
     } catch (Exception e) {
       log.warn("Redis SADD failed for key {}: {}", key, e.getMessage());
     }

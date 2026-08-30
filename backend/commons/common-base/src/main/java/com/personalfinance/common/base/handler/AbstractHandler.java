@@ -8,12 +8,6 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Abstract base Handler with template method pattern.
- * <p>
- * Subclasses MUST override: {@link #doHandle(BaseRequest)}.
- * Subclasses MAY override: {@link #preHandle(BaseRequest)}, {@link #postHandle(BaseRequest, BaseResponse)}.
- * {@link #getRequestType()} is auto-resolved from generic type arguments — no need to override.
- * <p>
- * The {@link #execute(BaseRequest)} method orchestrates the full flow.
  *
  * @param <Req> Request DTO type — must implement {@link BaseRequest}
  * @param <Res> Response DTO type — must implement {@link BaseResponse}

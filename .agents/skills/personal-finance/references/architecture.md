@@ -238,7 +238,8 @@ Contains:
 
 ```java
 // ApiResponse.java
-@Data
+@Getter
+@Setter
 @Builder
 public class ApiResponse<T> {
     private boolean success;
@@ -261,7 +262,8 @@ public class ApiResponse<T> {
 ```java
 // BaseEntity.java
 @MappedSuperclass
-@Data
+@Getter
+@Setter
 public abstract class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -554,7 +556,8 @@ The **mandatory mapper** (`mapFromGrpc` + `mapToGrpc`) ensures:
 ```java
 package com.personalfinance.common.event.model;
 
-@Data
+@Getter
+@Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor

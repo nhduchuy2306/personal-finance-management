@@ -2,8 +2,9 @@ package com.personalfinance.common.base.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
@@ -11,8 +12,9 @@ import org.springframework.data.domain.Sort;
  * Pagination request DTO.
  * Used as query parameters in list endpoints.
  */
-@Data
-@Builder
+@Getter
+@Setter
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaginationRequest {

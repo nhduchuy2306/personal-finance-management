@@ -1,8 +1,9 @@
 package com.personalfinance.common.event.model;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,8 @@ import java.util.UUID;
  * Base event class for all Kafka events.
  * All event DTOs extend this.
  */
-@Data
+@Getter
+@Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor

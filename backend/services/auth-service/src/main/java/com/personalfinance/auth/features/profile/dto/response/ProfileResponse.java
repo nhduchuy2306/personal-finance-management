@@ -4,8 +4,9 @@ import com.personalfinance.auth.model.User;
 import com.personalfinance.common.base.response.BaseResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -13,8 +14,9 @@ import java.util.UUID;
 /**
  * Profile response DTO.
  */
-@Data
-@Builder
+@Getter
+@Setter
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfileResponse implements BaseResponse {

@@ -4,8 +4,9 @@ import com.personalfinance.common.base.request.UserAwareRequest;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.UUID;
 
@@ -13,8 +14,9 @@ import java.util.UUID;
  * Update profile request DTO.
  * userId is auto-populated by AbstractController from UserContext.
  */
-@Data
-@Builder
+@Getter
+@Setter
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateProfileRequest implements UserAwareRequest {

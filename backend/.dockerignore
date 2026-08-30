@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+**/build/
+**/out/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# AI / Documentation
+.agents/
+*.md
+!README.md
+
+# Infrastructure (avoid recursive context)
+infrastructure/
+
+# Frontend (not needed for backend build)
+frontend/
+
+# OS files
+Thumbs.db
+.DS_Store

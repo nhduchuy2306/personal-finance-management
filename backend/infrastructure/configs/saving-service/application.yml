@@ -1,0 +1,13 @@
+# ── Saving Service — Docker config override ──
+# Points to config-service via Docker network
+spring:
+  application:
+    name: saving-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:stag}
+  config:
+    import: optional:configserver:http://pf-config:8888
+  cloud:
+    config:
+      name: ${spring.application.name},db-config,cache,kafka,discovery
+      fail-fast: true
