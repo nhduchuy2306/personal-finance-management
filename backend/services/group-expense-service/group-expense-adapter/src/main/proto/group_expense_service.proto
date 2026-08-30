@@ -7,26 +7,26 @@ option java_package = "com.personalfinance.groupexpense.adapter.proto";
 
 // Group Expense service gRPC API — reserved for future BFF/dashboard
 service GroupExpenseService {
-    // Get group summary with simplified debts
-    rpc GetGroupSummary (GetGroupSummaryRequest) returns (GroupSummaryResponse);
+  // Get group summary with simplified debts
+  rpc GetGroupSummary (GetGroupSummaryRequest) returns (GroupSummaryResponse);
 }
 
 message GetGroupSummaryRequest {
-    string group_id = 1;
+  string group_id = 1;
 }
 
 message GroupSummaryResponse {
-    string group_id = 1;
-    string group_name = 2;
-    int32 member_count = 3;
-    int64 total_expenses = 4;
-    repeated SimplifiedDebt debts = 5;
+  string group_id = 1;
+  string group_name = 2;
+  int32 member_count = 3;
+  int64 total_expenses = 4;
+  repeated SimplifiedDebt debts = 5;
 }
 
 message SimplifiedDebt {
-    string from_member_id = 1;
-    string from_member_name = 2;
-    string to_member_id = 3;
-    string to_member_name = 4;
-    int64 amount = 5;
+  string from_member_id = 1;
+  string from_member_name = 2;
+  string to_member_id = 3;
+  string to_member_name = 4;
+  int64 amount = 5;
 }

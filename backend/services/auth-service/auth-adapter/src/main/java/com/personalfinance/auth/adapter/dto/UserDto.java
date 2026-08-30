@@ -17,9 +17,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class UserDto {
 
-    private UUID id;
-    private String displayName;
-    private String email;
-    private String telegramChatId;
-    private String avatarUrl;
+  private UUID id;
+  private String displayName;
+  private String email;
+  private String telegramChatId;
+  private String avatarUrl;
 }

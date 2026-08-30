@@ -1,0 +1,63 @@
+# Dev profile — local development without config-server
+# This config is used when SPRING_PROFILES_ACTIVE=dev
+
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Redis Sentinel (local: 1 master, 2 replicas, 3 sentinels)
+  data:
+    redis:
+      sentinel:
+        master: mymaster
+        nodes: localhost:26379,localhost:26380,localhost:26381
+      password:
+
+  # Kafka (local KRaft mode)
+  kafka:
+    bootstrap-servers: localhost:9092
+
+  # gRPC server port
+  grpc:
+    server:
+      port: 28081
+
+# JWT config
+app:
+  jwt:
+    secret: dev-secret-key-must-be-at-least-256-bits-long-for-hmac-sha256-algorithm
+    access-token-expiry: 1800000     # 30 minutes
+    refresh-token-expiry: 604800000  # 7 days
+    issuer: personal-finance
+
+# Eureka (local)
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# Logging
+logging:
+  level:
+    com.personalfinance: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

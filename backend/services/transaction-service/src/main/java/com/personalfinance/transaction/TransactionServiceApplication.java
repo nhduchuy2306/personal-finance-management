@@ -5,13 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication(scanBasePackages = {
-        "com.personalfinance.transaction",
-        "com.personalfinance.common"
+  "com.personalfinance.transaction",
+  "com.personalfinance.common"
 })
 @EnableDiscoveryClient
 public class TransactionServiceApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(TransactionServiceApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(TransactionServiceApplication.class, args);
+  }
 }

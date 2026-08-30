@@ -13,9 +13,13 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.telegram")
 public class TelegramProperties {
 
-    /** Telegram Bot token */
-    private String botToken;
+  /**
+   * Telegram Bot token
+   */
+  private String botToken;
 
-    /** Telegram Bot API base URL */
-    private String apiBaseUrl = "https://api.telegram.org";
+  /**
+   * Telegram Bot API base URL
+   */
+  private String apiBaseUrl = "https://api.telegram.org";
 }

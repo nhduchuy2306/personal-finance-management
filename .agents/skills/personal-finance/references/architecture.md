@@ -17,140 +17,120 @@
 
 Every use case is one Handler class. No `@Service` classes for business logic.
 
-### 1.1 Base Interface (in common-base)
+### 1.1 Base Interfaces — Request/Response contracts (in common-base)
+
+**All requests MUST implement `BaseRequest`. All responses MUST implement `BaseResponse`.**
 
 ```java
-package com.personalfinance.common.base.handler;
+// Marker interfaces — enforce type safety in Handler/HandlerRegistry
+public interface BaseRequest {}
+public interface BaseResponse {}
 
-public interface Handler<Req, Res> {
-    /**
-     * Validation, data enrichment, permission checks.
-     * Throw BusinessException here to abort early.
-     */
+// Auto-populates userId from UserContext via AbstractController.dispatch()
+public interface UserAwareRequest extends BaseRequest {
+    UUID getUserId();
+    void setUserId(UUID userId);
+}
+
+// Pagination — includes toPageable() default helper
+public interface PageableRequest extends BaseRequest {
+    int getPage(); void setPage(int page);
+    int getSize(); void setSize(int size);
+    String getSortBy(); void setSortBy(String sortBy);
+    String getSortDir(); void setSortDir(String sortDir);
+    default Pageable toPageable() { /* safe defaults, max 100 */ }
+}
+
+// Singleton for handlers returning nothing (e.g., delete)
+public final class VoidResponse implements BaseResponse {
+    public static final VoidResponse INSTANCE = new VoidResponse();
+}
+
+// Paginated results wrapper with Page<T> factory
+public class PageableResponse<T> implements BaseResponse {
+    private List<T> content; int page; int size; long totalElements; int totalPages; boolean last; boolean first;
+    public static <T> PageableResponse<T> from(Page<T> page) { /* ... */ }
+}
+```
+
+### 1.2 Handler Interface (in common-base)
+
+```java
+public interface Handler<Req extends BaseRequest, Res extends BaseResponse> {
     void preHandle(Req request);
-    
-    /**
-     * Core business logic. DB writes, calculations.
-     * Return the result.
-     */
     Res doHandle(Req request);
-    
-    /**
-     * Side effects AFTER success: publish Kafka events, invalidate cache.
-     * Must not throw — failures here are logged, not rolled back.
-     */
     void postHandle(Req request, Res response);
-    
-    /**
-     * Used by HandlerRegistry to build the dispatch map.
-     * Return the Class of the request DTO.
-     */
     Class<Req> getRequestType();
 }
 ```
 
-### 1.2 Abstract Base Handler
+### 1.3 Abstract Base Handler
+
+- **Only `doHandle()` is mandatory** — `preHandle()` and `postHandle()` are optional no-ops.
+- **`getRequestType()` is auto-resolved** via `GenericTypeResolver` + `ClassUtils.getUserClass()` (CGLIB-proxy safe).
 
 ```java
-package com.personalfinance.common.base.handler;
-
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
-public abstract class AbstractHandler<Req, Res> implements Handler<Req, Res> {
+public abstract class AbstractHandler<Req extends BaseRequest, Res extends BaseResponse>
+        implements Handler<Req, Res> {
 
     public Res execute(Req request) {
         preHandle(request);
         Res response = doHandle(request);
-        try {
-            postHandle(request, response);
-        } catch (Exception e) {
-            // postHandle failures are logged but don't rollback the main operation
-            log.error("postHandle failed for {}: {}", getRequestType().getSimpleName(), e.getMessage(), e);
-        }
+        try { postHandle(request, response); }
+        catch (Exception e) { log.error("postHandle failed: {}", e.getMessage(), e); }
         return response;
     }
 
-    @Override
-    public void preHandle(Req request) {
-        // default no-op — override when needed
-    }
+    @Override public void preHandle(Req request) { /* no-op */ }
+    @Override public void postHandle(Req request, Res response) { /* no-op */ }
 
     @Override
-    public void postHandle(Req request, Res response) {
-        // default no-op — override when needed
+    @SuppressWarnings("unchecked")
+    public Class<Req> getRequestType() {
+        Class<?> userClass = ClassUtils.getUserClass(this);
+        Class<?>[] typeArgs = GenericTypeResolver.resolveTypeArguments(userClass, AbstractHandler.class);
+        return (Class<Req>) typeArgs[0]; // auto-resolved — no override needed
     }
 }
 ```
 
-### 1.3 Handler Registry (Mediator)
+### 1.4 Handler Registry (Mediator)
 
 ```java
-package com.personalfinance.common.base.handler;
-
-import org.springframework.stereotype.Component;
-import com.personalfinance.common.base.exception.HandlerNotFoundException;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 @Component
 public class HandlerRegistry {
-
     private final Map<Class<?>, Handler<?, ?>> handlers;
 
-    public HandlerRegistry(List<Handler<?, ?>> handlerList) {
-        this.handlers = handlerList.stream()
-            .collect(Collectors.toMap(
-                Handler::getRequestType,
-                Function.identity(),
-                (existing, duplicate) -> {
-                    throw new IllegalStateException(
-                        "Duplicate handler for request type: " + existing.getRequestType().getSimpleName()
-                    );
-                }
-            ));
-    }
+    public HandlerRegistry(List<Handler<?, ?>> handlerList) { /* auto-discovery */ }
 
     @SuppressWarnings("unchecked")
-    public <Req, Res> Res dispatch(Req request) {
+    public <Req extends BaseRequest, Res extends BaseResponse> Res dispatch(Req request) {
         Handler<Req, Res> handler = (Handler<Req, Res>) handlers.get(request.getClass());
-        if (handler == null) {
-            throw new HandlerNotFoundException(
-                "No handler registered for: " + request.getClass().getSimpleName()
-            );
-        }
+        if (handler == null) throw new HandlerNotFoundException(...);
         return ((AbstractHandler<Req, Res>) handler).execute(request);
     }
 }
 ```
 
-### 1.4 Example Handler Implementation
+### 1.5 Example Handler Implementation
+
+**Note**: No `getRequestType()` override needed — auto-resolved from generics.
 
 ```java
-package com.personalfinance.transaction.features.expense.handler.command;
-
 @Component
 @RequiredArgsConstructor
 public class CreateExpenseHandler extends AbstractHandler<CreateExpenseRequest, CreateExpenseResponse> {
+    // CreateExpenseRequest implements UserAwareRequest → userId auto-populated
+    // CreateExpenseResponse implements BaseResponse
 
     private final TransactionRepository repository;
     private final BudgetGrpcClient budgetClient;
     private final TransactionEventPublisher eventPublisher;
-    private final CacheService cacheService;
-
-    @Override
-    public Class<CreateExpenseRequest> getRequestType() {
-        return CreateExpenseRequest.class;
-    }
 
     @Override
     public void preHandle(CreateExpenseRequest request) {
-        // validate amount > 0
-        if (request.getAmount() <= 0) {
-            throw new ValidationException("Amount must be positive");
-        }
-        // validate category exists (gRPC call to budget-service)
+        if (request.getAmount() <= 0) throw new BusinessException(ErrorCode.INVALID_AMOUNT);
         budgetClient.validateCategoryExists(request.getCategoryId());
     }
 
@@ -158,43 +138,29 @@ public class CreateExpenseHandler extends AbstractHandler<CreateExpenseRequest, 
     @Transactional
     public CreateExpenseResponse doHandle(CreateExpenseRequest request) {
         Transaction transaction = Transaction.builder()
-            .userId(UserContext.getCurrentUserId())
+            .userId(request.getUserId()) // ← from UserAwareRequest, not UserContext
             .categoryId(request.getCategoryId())
             .amount(request.getAmount())
-            .type(TransactionType.EXPENSE)
-            .note(request.getNote())
-            .transactionDate(request.getDate())
-            .source(TransactionSource.MANUAL)
             .build();
-        
-        transaction = repository.save(transaction);
-        
-        // update Redis spending cache
-        String dailyKey = CacheKeyBuilder.dailySpending(transaction.getUserId(), 
-            transaction.getCategoryId(), transaction.getTransactionDate());
-        cacheService.increment(dailyKey, transaction.getAmount());
-        
-        return CreateExpenseResponse.from(transaction);
+        return CreateExpenseResponse.from(repository.save(transaction));
     }
 
     @Override
     public void postHandle(CreateExpenseRequest request, CreateExpenseResponse response) {
-        // publish Kafka event
         eventPublisher.publish(response.toEvent());
-        
-        // check budget threshold and publish warning/critical if needed
-        checkBudgetThreshold(response);
     }
 }
 ```
 
-### 1.5 Rules
+### 1.6 Rules
 - **One handler = one use case**. Never combine multiple operations in one handler.
 - **Commands** change state (create, update, delete) → go in `handler/command/`
 - **Queries** only read → go in `handler/query/`
 - **preHandle**: validation + enrichment only. Throw exceptions to abort.
 - **doHandle**: core logic + DB operations. This is where `@Transactional` goes.
 - **postHandle**: Kafka events, cache invalidation. Failures logged, not thrown.
+- **Request DTOs**: implement `BaseRequest`, or `UserAwareRequest` if userId needed, or `PageableRequest` for pagination.
+- **Response DTOs**: implement `BaseResponse`. Use `VoidResponse.INSTANCE` for void handlers.
 
 ---
 
@@ -259,9 +225,16 @@ saving-service/features/
 ## 3. Common Modules Detail
 
 ### 3.1 common-base
-Core foundation. No heavy Spring dependencies.
+Core foundation.
 
-Contains: `Handler`, `AbstractHandler`, `HandlerRegistry`, `ApiResponse`, `PageRequest`/`PageResponse`, `BaseEntity` (id, createdAt, updatedAt), `GlobalExceptionHandler`, `BusinessException`, `ValidationException`, `HandlerNotFoundException`, `ErrorCode` enum, `DateUtils` (VN timezone), `MoneyUtils` (VNĐ formatting), `AppConstants`.
+Contains:
+- **Request interfaces**: `BaseRequest`, `UserAwareRequest`, `PageableRequest`
+- **Response interfaces**: `BaseResponse`, `VoidResponse`, `PageableResponse<T>`
+- **Handler pattern**: `Handler`, `AbstractHandler`, `HandlerRegistry`
+- **Response wrapper**: `ApiResponse`
+- **Entity**: `BaseEntity` (id, createdAt, updatedAt)
+- **Exceptions**: `GlobalExceptionHandler`, `BusinessException`, `HandlerNotFoundException`, `ErrorCode` enum
+- **Utilities**: `DateUtils` (VN timezone), `MoneyUtils` (VNĐ formatting), `AppConstants`
 
 ```java
 // ApiResponse.java
@@ -331,38 +304,59 @@ public class UserContext {
 Telegram Bot API client. Only used by notification-service.
 
 ### 3.7 common-web
-CORS, Jackson config, Swagger/OpenAPI, request logging filter, `GlobalResponseAdvice`.
+CORS, Jackson config, Swagger/OpenAPI, request logging filter, `GlobalResponseAdvice`, **`AbstractController`**.
+
+Depends on: common-base, common-security.
 
 ---
 
 ## 4. Controller Pattern
 
 Controllers are **thin dispatchers only**. No business logic.
+All controllers **extend `AbstractController`** which provides:
+- Centralized `HandlerRegistry` injection
+- `dispatch(request)` method that auto-wraps in `ApiResponse.success()`
+- Auto-population of `userId` for `UserAwareRequest` DTOs from `UserContext`
+- Overridable `enrichRequest()` hook for future cross-cutting concerns
 
 ```java
+// AbstractController (in common-web)
+public abstract class AbstractController {
+    private final HandlerRegistry registry;
+
+    protected AbstractController(HandlerRegistry registry) { this.registry = registry; }
+
+    protected <Res extends BaseResponse> ApiResponse<Res> dispatch(BaseRequest request) {
+        enrichRequest(request);
+        return ApiResponse.success(registry.dispatch(request));
+    }
+
+    protected void enrichRequest(BaseRequest request) {
+        if (request instanceof UserAwareRequest u && u.getUserId() == null) {
+            u.setUserId(UserContext.getCurrentUserId());
+        }
+    }
+}
+```
+
+```java
+// Concrete controller example
 @RestController
 @RequestMapping("/api/v1/transactions")
-@RequiredArgsConstructor
-public class ExpenseController {
+public class ExpenseController extends AbstractController {
 
-    private final HandlerRegistry registry;
+    public ExpenseController(HandlerRegistry registry) { super(registry); }
 
     @PostMapping
     public ApiResponse<CreateExpenseResponse> create(
             @Valid @RequestBody CreateExpenseRequest request) {
-        return ApiResponse.success(registry.dispatch(request));
-    }
-
-    @GetMapping("/remaining/daily")
-    public ApiResponse<DailyRemainingResponse> getDailyRemaining(
-            @Valid GetDailyRemainingRequest request) {
-        return ApiResponse.success(registry.dispatch(request));
+        return dispatch(request); // userId auto-populated if UserAwareRequest
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<ExpenseResponse>> list(
+    public ApiResponse<PageableResponse<ExpenseResponse>> list(
             @Valid ListExpensesRequest request) {
-        return ApiResponse.success(registry.dispatch(request));
+        return dispatch(request); // paginated queries too
     }
 }
 ```
@@ -373,20 +367,31 @@ public class ExpenseController {
 
 ### 5.1 Adapter Sub-module Structure
 
+**IMPORTANT**: The adapter module is a **shared library** (relay) — it contains only what consuming services need:
+- Proto file (generates stubs)
+- DTOs (domain objects shared with consumers)
+- Client (convenience wrapper for consumers)
+
+The gRPC **server** and its **handlers** live in the **service module** itself (not the adapter), because they need access to the database and repositories.
+
 ```
 auth-service/
-├── auth-adapter/
+├── auth-adapter/                              # ← shared library for consumers
 │   ├── auth-adapter.gradle
 │   └── src/
 │       ├── main/proto/
 │       │   └── auth_service.proto
 │       └── main/java/com/personalfinance/auth/adapter/
-│           ├── server/
-│           │   └── AuthGrpcServer.java
 │           ├── client/
-│           │   └── AuthGrpcClient.java
-│           └── mapper/
-│               └── AuthGrpcMapper.java       # ← bidirectional mapper
+│           │   └── AuthGrpcClient.java         # ← consumers use this
+│           └── dto/
+│               └── UserDto.java               # ← shared domain DTO
+├── src/main/java/com/personalfinance/auth/
+│   └── grpc/server/                           # ← server lives in service, NOT adapter
+│       ├── AuthGrpcServer.java                # ← @GrpcService, delegates to handlers
+│       ├── GetUserByIdGrpcHandler.java        # ← uses UserRepository (DB access)
+│       ├── GetUsersByIdsGrpcHandler.java
+│       └── GetUserTelegramChatIdGrpcHandler.java
 ```
 
 ### 5.2 gRPC Handler Pattern (separate from REST handlers)
@@ -1268,13 +1273,13 @@ protobuf {
 | Service | REST Port | gRPC Port |
 |---------|-----------|-----------|
 | api-gateway | 8080 | — |
-| auth-service | 8081 | 9081 |
-| budget-service | 8082 | 9082 |
-| transaction-service | 8083 | 9083 |
+| auth-service | 8081 | 28081 |
+| budget-service | 8082 | 28082 |
+| transaction-service | 8083 | 28083 |
 | ocr-service | 8084 | — |
-| group-expense-service | 8085 | 9085 |
+| group-expense-service | 8085 | 28085 |
 | notification-service | 8086 | — |
-| recurring-bill-service | 8087 | 9087 |
+| recurring-bill-service | 8087 | 28087 |
 | saving-service | 8088 | — |
 | eureka-server | 8761 | — |
 | PostgreSQL | 5432 | — |

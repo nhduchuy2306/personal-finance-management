@@ -5,7 +5,7 @@ package com.personalfinance.common.base.exception;
  */
 public class HandlerNotFoundException extends BusinessException {
 
-    public HandlerNotFoundException(String message) {
-        super(ErrorCode.HANDLER_NOT_FOUND, message);
-    }
+  public HandlerNotFoundException(String message) {
+    super(ErrorCode.HANDLER_NOT_FOUND, message);
+  }
 }

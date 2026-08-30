@@ -17,31 +17,31 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
-    private final JwtProperties jwtProperties;
+  private final JwtProperties jwtProperties;
 
-    public String generateAccessToken(UUID userId, String email) {
-        return buildToken(userId, email, jwtProperties.getAccessTokenExpiry());
-    }
+  public String generateAccessToken(UUID userId, String email) {
+    return buildToken(userId, email, jwtProperties.getAccessTokenExpiry());
+  }
 
-    public String generateRefreshToken(UUID userId, String email) {
-        return buildToken(userId, email, jwtProperties.getRefreshTokenExpiry());
-    }
+  public String generateRefreshToken(UUID userId, String email) {
+    return buildToken(userId, email, jwtProperties.getRefreshTokenExpiry());
+  }
 
-    private String buildToken(UUID userId, String email, long expiryMs) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiryMs);
+  private String buildToken(UUID userId, String email, long expiryMs) {
+    Date now = new Date();
+    Date expiry = new Date(now.getTime() + expiryMs);
 
-        return Jwts.builder()
-                .subject(userId.toString())
-                .claim("email", email)
-                .issuer(jwtProperties.getIssuer())
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey())
-                .compact();
-    }
+    return Jwts.builder()
+      .subject(userId.toString())
+      .claim("email", email)
+      .issuer(jwtProperties.getIssuer())
+      .issuedAt(now)
+      .expiration(expiry)
+      .signWith(getSigningKey())
+      .compact();
+  }
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
-    }
+  private SecretKey getSigningKey() {
+    return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+  }
 }

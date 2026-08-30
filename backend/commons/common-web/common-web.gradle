@@ -12,6 +12,7 @@ dependencyManagement {
 
 dependencies {
     api project(':common-base')
+    api project(':common-security')
     api 'org.springframework.boot:spring-boot-starter-web'
     api "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
     api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'

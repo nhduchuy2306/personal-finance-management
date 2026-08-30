@@ -7,41 +7,41 @@ option java_package = "com.personalfinance.recurringbill.adapter.proto";
 
 // Recurring Bill service gRPC API — used by budget-service for draft auto-fill
 service RecurringBillService {
-    // Get bills due within a date range (for budget draft)
-    rpc GetBillsDueInPeriod (GetBillsDueRequest) returns (BillsDueResponse);
+  // Get bills due within a date range (for budget draft)
+  rpc GetBillsDueInPeriod (GetBillsDueRequest) returns (BillsDueResponse);
 
-    // Get estimate adjustment suggestion
-    rpc GetBillEstimateAdjustment (GetEstimateAdjustmentRequest) returns (EstimateAdjustmentResponse);
+  // Get estimate adjustment suggestion
+  rpc GetBillEstimateAdjustment (GetEstimateAdjustmentRequest) returns (EstimateAdjustmentResponse);
 }
 
 message GetBillsDueRequest {
-    string user_id = 1;
-    string start_month = 2; // yyyy-MM
-    string end_month = 3;   // yyyy-MM
+  string user_id = 1;
+  string start_month = 2; // yyyy-MM
+  string end_month = 3;   // yyyy-MM
 }
 
 message BillsDueResponse {
-    repeated BillDueItem bills = 1;
+  repeated BillDueItem bills = 1;
 }
 
 message BillDueItem {
-    string bill_id = 1;
-    string name = 2;
-    string category_id = 3;
-    int64 estimated_amount = 4;
-    string due_date = 5;
-    string cycle_type = 6;
-    bool is_fixed_amount = 7;
+  string bill_id = 1;
+  string name = 2;
+  string category_id = 3;
+  int64 estimated_amount = 4;
+  string due_date = 5;
+  string cycle_type = 6;
+  bool is_fixed_amount = 7;
 }
 
 message GetEstimateAdjustmentRequest {
-    string bill_id = 1;
+  string bill_id = 1;
 }
 
 message EstimateAdjustmentResponse {
-    string bill_id = 1;
-    int64 current_estimate = 2;
-    int64 suggested_estimate = 3;
-    bool should_adjust = 4;
-    string reason = 5;
+  string bill_id = 1;
+  int64 current_estimate = 2;
+  int64 suggested_estimate = 3;
+  bool should_adjust = 4;
+  string reason = 5;
 }

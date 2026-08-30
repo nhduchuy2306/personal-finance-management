@@ -27,40 +27,40 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenValidator tokenValidator;
+  private final JwtTokenValidator tokenValidator;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        try {
-            String token = extractToken(request);
-            if (token != null && tokenValidator.isTokenValid(token)) {
-                UUID userId = tokenValidator.extractUserId(token);
-                String email = tokenValidator.extractEmail(token);
+  @Override
+  protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain filterChain) throws ServletException, IOException {
+    try {
+      String token = extractToken(request);
+      if (token != null && tokenValidator.isTokenValid(token)) {
+        UUID userId = tokenValidator.extractUserId(token);
+        String email = tokenValidator.extractEmail(token);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+        UsernamePasswordAuthenticationToken authentication =
+          new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                UserContext.set(userId);
-            }
-        } catch (Exception e) {
-            log.debug("JWT authentication failed: {}", e.getMessage());
-        }
-
-        try {
-            filterChain.doFilter(request, response);
-        } finally {
-            UserContext.clear();
-        }
+        UserContext.set(userId);
+      }
+    } catch (Exception e) {
+      log.debug("JWT authentication failed: {}", e.getMessage());
     }
 
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+    try {
+      filterChain.doFilter(request, response);
+    } finally {
+      UserContext.clear();
     }
+  }
+
+  private String extractToken(HttpServletRequest request) {
+    String bearerToken = request.getHeader("Authorization");
+    if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+      return bearerToken.substring(7);
+    }
+    return null;
+  }
 }

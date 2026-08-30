@@ -8,17 +8,17 @@ import java.util.UUID;
  */
 public class UserContext {
 
-    private static final ThreadLocal<UUID> currentUserId = new ThreadLocal<>();
+  private static final ThreadLocal<UUID> currentUserId = new ThreadLocal<>();
 
-    public static void set(UUID userId) {
-        currentUserId.set(userId);
-    }
+  public static void set(UUID userId) {
+    currentUserId.set(userId);
+  }
 
-    public static UUID getCurrentUserId() {
-        return currentUserId.get();
-    }
+  public static UUID getCurrentUserId() {
+    return currentUserId.get();
+  }
 
-    public static void clear() {
-        currentUserId.remove();
-    }
+  public static void clear() {
+    currentUserId.remove();
+  }
 }

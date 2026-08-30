@@ -15,20 +15,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    @Value("${spring.application.name:personal-finance}")
-    private String appName;
+  @Value("${spring.application.name:personal-finance}")
+  private String appName;
 
-    @Bean
-    public OpenAPI openAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title(appName + " API")
-                        .version("1.0.0")
-                        .description("Personal Finance Manager — " + appName))
-                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-                .schemaRequirement("bearerAuth", new SecurityScheme()
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("bearer")
-                        .bearerFormat("JWT"));
-    }
+  @Bean
+  public OpenAPI openAPI() {
+    return new OpenAPI()
+      .info(new Info()
+        .title(appName + " API")
+        .version("1.0.0")
+        .description("Personal Finance Manager — " + appName))
+      .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+      .schemaRequirement("bearerAuth", new SecurityScheme()
+        .type(SecurityScheme.Type.HTTP)
+        .scheme("bearer")
+        .bearerFormat("JWT"));
+  }
 }

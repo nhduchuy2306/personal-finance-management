@@ -16,13 +16,13 @@ import java.util.TimeZone;
 @Configuration
 public class JacksonConfig {
 
-    @Bean
-    @Primary
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        return mapper;
-    }
+  @Bean
+  @Primary
+  public ObjectMapper objectMapper() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    mapper.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+    return mapper;
+  }
 }

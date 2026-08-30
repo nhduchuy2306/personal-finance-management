@@ -5,13 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication(scanBasePackages = {
-        "com.personalfinance.groupexpense",
-        "com.personalfinance.common"
+  "com.personalfinance.groupexpense",
+  "com.personalfinance.common"
 })
 @EnableDiscoveryClient
 public class GroupExpenseServiceApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(GroupExpenseServiceApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(GroupExpenseServiceApplication.class, args);
+  }
 }
