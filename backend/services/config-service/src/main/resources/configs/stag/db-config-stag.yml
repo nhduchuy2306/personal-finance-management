@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://pf-postgres:5432/personal_finance_db
+    username: postgres
+    password: ${DB_PASSWORD:postgres}

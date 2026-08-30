@@ -1,0 +1,6 @@
+server:
+  port: 8088
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-must-be-long-enough}

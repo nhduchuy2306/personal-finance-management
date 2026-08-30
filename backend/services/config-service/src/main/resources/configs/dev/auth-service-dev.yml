@@ -1,0 +1,3 @@
+app:
+  jwt:
+    secret: dev-secret-key-for-local-development-only-must-be-long-enough-256-bits

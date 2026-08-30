@@ -1,0 +1,43 @@
+plugins {
+    id 'java-library'
+    id 'org.springframework.boot' apply false
+    id 'io.spring.dependency-management'
+    id 'com.google.protobuf'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+    }
+}
+
+dependencies {
+    api project(':common-base')
+    api project(':common-grpc')
+    api "io.grpc:grpc-protobuf:${grpcVersion}"
+    api "io.grpc:grpc-stub:${grpcVersion}"
+    api "com.google.protobuf:protobuf-java:${protobufVersion}"
+    api 'jakarta.annotation:jakarta.annotation-api'
+    api "org.apache.tomcat:annotations-api:${tomcatAnnotationsVersion}"
+    api 'org.springframework.boot:spring-boot-starter-grpc-server'
+    api 'org.springframework.boot:spring-boot-starter-grpc-client'
+
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins { grpc {} }
+        }
+    }
+}

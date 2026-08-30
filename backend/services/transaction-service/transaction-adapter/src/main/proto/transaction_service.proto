@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package com.personalfinance.transaction;
+
+option java_multiple_files = true;
+option java_package = "com.personalfinance.transaction.adapter.proto";
+
+// Transaction service gRPC API — reserved for future use
+service TransactionService {
+    // Get spending summary for a user in a period
+    rpc GetSpendingSummary (GetSpendingSummaryRequest) returns (SpendingSummaryResponse);
+}
+
+message GetSpendingSummaryRequest {
+    string user_id = 1;
+    string start_date = 2;
+    string end_date = 3;
+}
+
+message SpendingSummaryResponse {
+    int64 total_expense = 1;
+    int64 total_income = 2;
+    repeated CategorySpending category_spendings = 3;
+}
+
+message CategorySpending {
+    string category_id = 1;
+    string category_name = 2;
+    int64 amount = 3;
+}

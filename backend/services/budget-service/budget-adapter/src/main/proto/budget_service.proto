@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package com.personalfinance.budget;
+
+option java_multiple_files = true;
+option java_package = "com.personalfinance.budget.adapter.proto";
+
+// Budget service gRPC API — used by transaction-service for budget checks
+service BudgetService {
+    // Get active budget for a user
+    rpc GetActiveBudget (GetActiveBudgetRequest) returns (ActiveBudgetResponse);
+
+    // Get category allocation (limit type + amount)
+    rpc GetCategoryAllocation (GetCategoryAllocationRequest) returns (CategoryAllocationResponse);
+
+    // Validate category exists
+    rpc ValidateCategoryExists (ValidateCategoryRequest) returns (ValidateCategoryResponse);
+}
+
+message GetActiveBudgetRequest {
+    string user_id = 1;
+}
+
+message ActiveBudgetResponse {
+    string budget_period_id = 1;
+    int64 total_amount = 2;
+    string start_month = 3;
+    string end_month = 4;
+    string status = 5;
+    bool has_active_budget = 6;
+}
+
+message GetCategoryAllocationRequest {
+    string user_id = 1;
+    string category_id = 2;
+    string month = 3; // yyyy-MM format
+}
+
+message CategoryAllocationResponse {
+    string category_id = 1;
+    string category_name = 2;
+    string limit_type = 3; // DAILY or MONTHLY
+    int64 limit_amount = 4;
+    bool has_allocation = 5;
+}
+
+message ValidateCategoryRequest {
+    string category_id = 1;
+}
+
+message ValidateCategoryResponse {
+    bool exists = 1;
+    string category_name = 2;
+}

@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package com.personalfinance.auth;
+
+option java_multiple_files = true;
+option java_package = "com.personalfinance.auth.adapter.proto";
+
+// Auth service gRPC API — used by other services to query user info
+service AuthService {
+    // Get single user by ID
+    rpc GetUserById (GetUserRequest) returns (UserResponse);
+
+    // Get multiple users by IDs (batch)
+    rpc GetUsersByIds (GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
+
+    // Get user's Telegram chat ID for notification
+    rpc GetUserTelegramChatId (GetUserTelegramRequest) returns (TelegramChatIdResponse);
+}
+
+message GetUserRequest {
+    string user_id = 1;
+}
+
+message GetUsersByIdsRequest {
+    repeated string user_ids = 1;
+}
+
+message GetUsersByIdsResponse {
+    repeated UserResponse users = 1;
+}
+
+message UserResponse {
+    string user_id = 1;
+    string display_name = 2;
+    string email = 3;
+    string telegram_chat_id = 4;
+    string avatar_url = 5;
+}
+
+message GetUserTelegramRequest {
+    string user_id = 1;
+}
+
+message TelegramChatIdResponse {
+    string user_id = 1;
+    string chat_id = 2;
+    bool has_telegram = 3;
+}

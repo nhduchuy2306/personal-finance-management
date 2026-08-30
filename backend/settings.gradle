@@ -1,0 +1,39 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'personal-finance'
+
+FileTree buildFiles = fileTree(rootDir) {
+    List excludes = gradle.startParameter.projectProperties.get("excludeProjects")?.split(",")
+    include '**/*.gradle'
+    exclude 'build', '**/gradle', '**/settings.gradle', 'buildSrc', '/build.gradle', '.*', 'out'
+    exclude 'frontend/**'
+    exclude 'infrastructure/**'
+    exclude 'performance-test/**'
+    if (excludes) {
+        exclude excludes
+    }
+}
+
+String rootDirPath = rootDir.absolutePath + File.separator
+
+buildFiles.each { File buildFile ->
+    boolean isDefaultName = 'build.gradle'.equals(buildFile.name)
+    if (isDefaultName) {
+        String buildFilePath = buildFile.parentFile.absolutePath
+        String projectPath = buildFilePath.replace(rootDirPath, '').replace(File.separator, ':')
+        include projectPath
+    } else {
+        String projectName = buildFile.name.replace('.gradle', '')
+        String projectPath = ':' + projectName
+        include projectPath
+        def project = findProject(projectPath)
+        project.name = projectName
+        project.projectDir = buildFile.parentFile
+        project.buildFileName = buildFile.name
+    }
+}

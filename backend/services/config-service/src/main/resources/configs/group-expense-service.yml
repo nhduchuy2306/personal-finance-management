@@ -1,0 +1,10 @@
+server:
+  port: 8085
+
+grpc:
+  server:
+    port: 28085
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-key-here-change-in-production-must-be-long-enough}

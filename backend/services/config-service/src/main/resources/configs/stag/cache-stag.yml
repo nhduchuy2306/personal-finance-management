@@ -1,0 +1,6 @@
+spring:
+  data:
+    redis:
+      sentinel:
+        master: mymaster
+        nodes: pf-redis-sentinel-1:26379,pf-redis-sentinel-2:26379,pf-redis-sentinel-3:26379

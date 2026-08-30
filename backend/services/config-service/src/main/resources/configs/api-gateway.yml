@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**
+        - id: budget-service
+          uri: lb://budget-service
+          predicates:
+            - Path=/api/v1/budgets/**, /api/v1/categories/**
+        - id: transaction-service
+          uri: lb://transaction-service
+          predicates:
+            - Path=/api/v1/transactions/**
+        - id: ocr-service
+          uri: lb://ocr-service
+          predicates:
+            - Path=/api/v1/receipts/**
+        - id: group-expense-service
+          uri: lb://group-expense-service
+          predicates:
+            - Path=/api/v1/groups/**
+        - id: recurring-bill-service
+          uri: lb://recurring-bill-service
+          predicates:
+            - Path=/api/v1/recurring-bills/**
+        - id: saving-service
+          uri: lb://saving-service
+          predicates:
+            - Path=/api/v1/savings/**
