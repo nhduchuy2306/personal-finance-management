@@ -1,38 +1,43 @@
 package com.personalfinance.auth.features.authen.handler.command;
 
 import com.personalfinance.auth.features.authen.dto.request.RefreshTokenRequest;
-import com.personalfinance.auth.features.authen.dto.response.AuthResponse;
 import com.personalfinance.auth.model.RefreshToken;
 import com.personalfinance.auth.model.User;
 import com.personalfinance.auth.repository.RefreshTokenRepository;
 import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
-import com.personalfinance.common.base.handler.AbstractHandler;
 import com.personalfinance.common.security.jwt.JwtProperties;
 import com.personalfinance.common.security.jwt.JwtTokenProvider;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 /**
- * Refresh token handler — validates refresh token, rotates (delete old, create new),
- * returns new JWT pair.
+ * Refresh token handler — validates refresh token, resolves user,
+ * deletes old token (rotation) via beforeTokenGeneration hook,
+ * then delegates new token generation to AbstractAuthHandler.
  */
 @Component
-@RequiredArgsConstructor
-public class RefreshTokenHandler extends AbstractHandler<RefreshTokenRequest, AuthResponse> {
+public class RefreshTokenHandler extends AbstractAuthHandler<RefreshTokenRequest> {
 
-  private final RefreshTokenRepository refreshTokenRepository;
   private final UserRepository userRepository;
-  private final JwtTokenProvider jwtTokenProvider;
-  private final JwtProperties jwtProperties;
+
+  /** Holds the stored token between resolveUser() and beforeTokenGeneration() */
+  private final ThreadLocal<RefreshToken> storedTokenHolder = new ThreadLocal<>();
+
+  public RefreshTokenHandler(RefreshTokenRepository refreshTokenRepository,
+                             JwtTokenProvider jwtTokenProvider,
+                             JwtProperties jwtProperties,
+                             UserRepository userRepository) {
+    super(refreshTokenRepository, jwtTokenProvider, jwtProperties);
+    this.userRepository = userRepository;
+  }
 
   @Override
   @Transactional
-  public AuthResponse doHandle(RefreshTokenRequest request) {
+  protected User resolveUser(RefreshTokenRequest request) {
     // Find and validate refresh token
     RefreshToken storedToken = refreshTokenRepository.findByToken(request.getRefreshToken())
       .orElseThrow(() -> new BusinessException(ErrorCode.TOKEN_INVALID));
@@ -43,31 +48,21 @@ public class RefreshTokenHandler extends AbstractHandler<RefreshTokenRequest, Au
       throw new BusinessException(ErrorCode.REFRESH_TOKEN_EXPIRED);
     }
 
+    // Store for deletion in beforeTokenGeneration
+    storedTokenHolder.set(storedToken);
+
     // Find user
-    User user = userRepository.findById(storedToken.getUserId())
+    return userRepository.findById(storedToken.getUserId())
       .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+  }
 
+  @Override
+  protected void beforeTokenGeneration(RefreshTokenRequest request, User user) {
     // Delete old refresh token (rotation)
-    refreshTokenRepository.delete(storedToken);
-
-    // Generate new JWT pair
-    String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
-    String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
-
-    // Save new refresh token
-    RefreshToken newTokenEntity = RefreshToken.builder()
-      .userId(user.getId())
-      .token(newRefreshToken)
-      .expiresAt(LocalDateTime.now().plusSeconds(jwtProperties.getRefreshTokenExpiry() / 1000))
-      .build();
-    refreshTokenRepository.save(newTokenEntity);
-
-    return AuthResponse.builder()
-      .accessToken(newAccessToken)
-      .refreshToken(newRefreshToken)
-      .userId(user.getId())
-      .email(user.getEmail())
-      .displayName(user.getDisplayName())
-      .build();
+    RefreshToken storedToken = storedTokenHolder.get();
+    storedTokenHolder.remove();
+    if (storedToken != null) {
+      refreshTokenRepository.delete(storedToken);
+    }
   }
 }
