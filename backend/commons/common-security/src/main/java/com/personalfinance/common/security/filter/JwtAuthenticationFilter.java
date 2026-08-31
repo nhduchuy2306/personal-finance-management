@@ -1,5 +1,7 @@
 package com.personalfinance.common.security.filter;
 
+import com.personalfinance.common.cache.enums.CacheKey;
+import com.personalfinance.common.cache.service.CacheService;
 import com.personalfinance.common.security.context.UserContext;
 import com.personalfinance.common.security.jwt.JwtTokenValidator;
 import jakarta.servlet.FilterChain;
@@ -21,7 +23,11 @@ import java.util.UUID;
 
 /**
  * JWT authentication filter.
- * Extracts Bearer token, validates, sets SecurityContext and UserContext.
+ * Extracts Bearer token, validates JWT signature, checks session in Redis,
+ * then sets SecurityContext and UserContext.
+ *
+ * <p>Session validation: After JWT is valid, checks if the session (sid claim)
+ * still exists in Redis. If not (user logged out), authentication is rejected.
  */
 @Slf4j
 @Component
@@ -29,6 +35,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtTokenValidator tokenValidator;
+  private final CacheService cacheService;
 
   @Override
   protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -39,13 +46,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       String token = extractToken(request);
       if (token != null && tokenValidator.isTokenValid(token)) {
         UUID userId = tokenValidator.extractUserId(token);
-        String email = tokenValidator.extractEmail(token);
+        String sessionId = tokenValidator.extractSessionId(token);
 
-        UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // Validate session — if sessionId is present, check it exists in Redis
+        if (sessionId != null
+          && !cacheService.exists(CacheKey.SESSION.buildKey(sessionId))) {
+          log.debug("Session {} has been invalidated (logged out)", sessionId);
+          // Skip authentication — user is logged out
+        } else {
+          String email = tokenValidator.extractEmail(token);
 
-        UserContext.set(userId);
+          UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+          SecurityContextHolder.getContext().setAuthentication(authentication);
+
+          UserContext.set(userId);
+        }
       }
     } catch (Exception e) {
       log.debug("JWT authentication failed: {}", e.getMessage());

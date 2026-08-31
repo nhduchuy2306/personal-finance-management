@@ -35,6 +35,11 @@ public class JwtTokenValidator {
     return claims.get("email", String.class);
   }
 
+  public String extractSessionId(String token) {
+    Claims claims = parseClaims(token);
+    return claims.get("sid", String.class);
+  }
+
   public boolean isTokenValid(String token) {
     try {
       parseClaims(token);

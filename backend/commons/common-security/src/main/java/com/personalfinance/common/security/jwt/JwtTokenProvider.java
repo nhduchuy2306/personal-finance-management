@@ -12,6 +12,7 @@ import java.util.UUID;
 
 /**
  * JWT token provider — generates access and refresh tokens.
+ * Access tokens contain a session ID (sid) claim for session validation.
  */
 @Component
 @RequiredArgsConstructor
@@ -19,17 +20,32 @@ public class JwtTokenProvider {
 
   private final JwtProperties jwtProperties;
 
-  public String generateAccessToken(UUID userId, String email) {
-    return buildToken(userId, email, jwtProperties.getAccessTokenExpiry());
-  }
-
-  public String generateRefreshToken(UUID userId, String email) {
-    return buildToken(userId, email, jwtProperties.getRefreshTokenExpiry());
-  }
-
-  private String buildToken(UUID userId, String email, long expiryMs) {
+  /**
+   * Generate access token WITH sessionId embedded as "sid" claim.
+   * The sessionId is used by JwtAuthenticationFilter to validate active sessions.
+   */
+  public String generateAccessToken(UUID userId, String email, String sessionId) {
     Date now = new Date();
-    Date expiry = new Date(now.getTime() + expiryMs);
+    Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiry());
+
+    return Jwts.builder()
+      .subject(userId.toString())
+      .claim("email", email)
+      .claim("sid", sessionId)
+      .issuer(jwtProperties.getIssuer())
+      .issuedAt(now)
+      .expiration(expiry)
+      .signWith(getSigningKey())
+      .compact();
+  }
+
+  /**
+   * Generate refresh token WITHOUT sessionId.
+   * Refresh tokens are validated via DB lookup, not session cache.
+   */
+  public String generateRefreshToken(UUID userId, String email) {
+    Date now = new Date();
+    Date expiry = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiry());
 
     return Jwts.builder()
       .subject(userId.toString())

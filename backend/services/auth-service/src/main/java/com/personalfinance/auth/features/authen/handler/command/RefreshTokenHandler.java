@@ -7,31 +7,36 @@ import com.personalfinance.auth.repository.RefreshTokenRepository;
 import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
+import com.personalfinance.common.cache.service.CacheService;
 import com.personalfinance.common.security.jwt.JwtProperties;
 import com.personalfinance.common.security.jwt.JwtTokenProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Refresh token handler — validates refresh token, resolves user,
  * deletes old token (rotation) via beforeTokenGeneration hook,
- * then delegates new token generation to AbstractAuthHandler.
+ * reuses existing sessionId, then delegates new token generation to AbstractAuthHandler.
  */
 @Component
 public class RefreshTokenHandler extends AbstractAuthHandler<RefreshTokenRequest> {
 
   private final UserRepository userRepository;
 
-  /** Holds the stored token between resolveUser() and beforeTokenGeneration() */
+  /**
+   * Holds the stored token between resolveUser() and beforeTokenGeneration()
+   */
   private final ThreadLocal<RefreshToken> storedTokenHolder = new ThreadLocal<>();
 
   public RefreshTokenHandler(RefreshTokenRepository refreshTokenRepository,
                              JwtTokenProvider jwtTokenProvider,
                              JwtProperties jwtProperties,
+                             CacheService cacheService,
                              UserRepository userRepository) {
-    super(refreshTokenRepository, jwtTokenProvider, jwtProperties);
+    super(refreshTokenRepository, jwtTokenProvider, jwtProperties, cacheService);
     this.userRepository = userRepository;
   }
 
@@ -48,12 +53,19 @@ public class RefreshTokenHandler extends AbstractAuthHandler<RefreshTokenRequest
       throw new BusinessException(ErrorCode.REFRESH_TOKEN_EXPIRED);
     }
 
-    // Store for deletion in beforeTokenGeneration
+    // Store for deletion in beforeTokenGeneration and sessionId reuse
     storedTokenHolder.set(storedToken);
 
     // Find user
     return userRepository.findById(storedToken.getUserId())
       .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+  }
+
+  @Override
+  protected String resolveSessionId(RefreshTokenRequest request) {
+    // Reuse the same sessionId from the old refresh token
+    RefreshToken storedToken = storedTokenHolder.get();
+    return Objects.nonNull(storedToken) ? storedToken.getSessionId() : super.resolveSessionId(request);
   }
 
   @Override

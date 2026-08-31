@@ -39,6 +39,9 @@ public class RefreshToken {
   @Column(nullable = false, unique = true, length = 500)
   private String token;
 
+  @Column(name = "session_id", nullable = false, length = 36)
+  private String sessionId;
+
   @Column(name = "expires_at", nullable = false)
   private LocalDateTime expiresAt;
 

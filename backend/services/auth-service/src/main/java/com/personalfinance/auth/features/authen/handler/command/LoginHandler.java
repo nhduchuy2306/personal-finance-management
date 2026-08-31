@@ -27,18 +27,16 @@ public class LoginHandler extends AbstractAuthHandler<LoginRequest> {
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
-  private final CacheService cacheService;
 
   public LoginHandler(RefreshTokenRepository refreshTokenRepository,
                       JwtTokenProvider jwtTokenProvider,
                       JwtProperties jwtProperties,
+                      CacheService cacheService,
                       UserRepository userRepository,
-                      PasswordEncoder passwordEncoder,
-                      CacheService cacheService) {
-    super(refreshTokenRepository, jwtTokenProvider, jwtProperties);
+                      PasswordEncoder passwordEncoder) {
+    super(refreshTokenRepository, jwtTokenProvider, jwtProperties, cacheService);
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
-    this.cacheService = cacheService;
   }
 
   @Override
