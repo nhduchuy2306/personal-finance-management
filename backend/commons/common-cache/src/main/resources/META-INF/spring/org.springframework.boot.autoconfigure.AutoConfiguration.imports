@@ -1,1 +1,2 @@
 com.personalfinance.common.cache.config.CommonCacheAutoConfiguration
+com.personalfinance.common.cache.config.CacheAwareRepositoryConfig

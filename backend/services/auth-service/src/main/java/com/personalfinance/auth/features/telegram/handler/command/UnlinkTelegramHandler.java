@@ -7,21 +7,19 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
-import com.personalfinance.common.cache.key.CacheKeyBuilder;
-import com.personalfinance.common.cache.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Unlink Telegram handler — sets telegram_chat_id = null.
+ * Cache eviction is handled automatically by CacheAwareRepository + UserCacheEvictionRule.
  */
 @Component
 @RequiredArgsConstructor
 public class UnlinkTelegramHandler extends AbstractHandler<UnlinkTelegramRequest, ProfileResponse> {
 
   private final UserRepository userRepository;
-  private final CacheService cacheService;
 
   @Override
   @Transactional
@@ -33,11 +31,5 @@ public class UnlinkTelegramHandler extends AbstractHandler<UnlinkTelegramRequest
     user = userRepository.save(user);
 
     return ProfileResponse.from(user);
-  }
-
-  @Override
-  public void postHandle(UnlinkTelegramRequest request, ProfileResponse response) {
-    // Invalidate user profile cache
-    cacheService.delete(CacheKeyBuilder.userProfile(request.getUserId()));
   }
 }

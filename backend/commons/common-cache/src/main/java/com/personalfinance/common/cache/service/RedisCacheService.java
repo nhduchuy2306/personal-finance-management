@@ -3,7 +3,9 @@ package com.personalfinance.common.cache.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Service;
 
@@ -149,7 +151,7 @@ public class RedisCacheService implements CacheService {
   @Override
   public void sAdd(String key, String... values) {
     try {
-      redisTemplate.opsForSet().add(key, (Object[])values);
+      redisTemplate.opsForSet().add(key, (Object[]) values);
     } catch (Exception e) {
       log.warn("Redis SADD failed for key {}: {}", key, e.getMessage());
     }
@@ -282,13 +284,19 @@ public class RedisCacheService implements CacheService {
 
   @Override
   public void deleteByPattern(String pattern) {
-    try {
-      Set<String> matchingKeys = keys(pattern);
-      if (!matchingKeys.isEmpty()) {
-        redisTemplate.delete(matchingKeys);
+    ScanOptions options = ScanOptions.scanOptions().match(pattern).count(100).build();
+    try (Cursor<String> cursor = redisTemplate.scan(options)) {
+      List<String> batch = new ArrayList<>();
+      while (cursor.hasNext()) {
+        batch.add(cursor.next());
+        if (batch.size() >= 100) {
+          redisTemplate.delete(batch);
+          batch.clear();
+        }
       }
-    } catch (Exception e) {
-      log.warn("Redis DELETE_BY_PATTERN failed for {}: {}", pattern, e.getMessage());
+      if (!batch.isEmpty()) {
+        redisTemplate.delete(batch);
+      }
     }
   }
 }

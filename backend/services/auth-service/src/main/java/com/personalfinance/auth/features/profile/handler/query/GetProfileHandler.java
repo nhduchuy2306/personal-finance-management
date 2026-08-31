@@ -6,7 +6,7 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
-import com.personalfinance.common.cache.key.CacheKeyBuilder;
+import com.personalfinance.common.cache.enums.CacheKey;
 import com.personalfinance.common.cache.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -27,7 +27,7 @@ public class GetProfileHandler extends AbstractHandler<GetProfileRequest, Profil
 
   @Override
   public ProfileResponse doHandle(GetProfileRequest request) {
-    String cacheKey = CacheKeyBuilder.userProfile(request.getUserId());
+    String cacheKey = CacheKey.USER_PROFILE.buildKey(request.getUserId());
 
     // Try cache first
     return cacheService.get(cacheKey, ProfileResponse.class)

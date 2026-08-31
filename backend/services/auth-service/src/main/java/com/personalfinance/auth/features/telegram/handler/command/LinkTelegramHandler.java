@@ -7,7 +7,7 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
-import com.personalfinance.common.cache.key.CacheKeyBuilder;
+import com.personalfinance.common.cache.enums.CacheKey;
 import com.personalfinance.common.cache.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Link Telegram handler — validates OTP from Redis (telegram:otp:{code}, TTL 5min),
  * saves chat_id to user, deletes OTP.
+ * Cache eviction is handled automatically by CacheAwareRepository + UserCacheEvictionRule.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class LinkTelegramHandler extends AbstractHandler<LinkTelegramRequest, Pr
   @Override
   public void preHandle(LinkTelegramRequest request) {
     // Validate OTP exists in Redis
-    String otpKey = CacheKeyBuilder.telegramOtp(request.getOtpCode());
+    String otpKey = CacheKey.TELEGRAM_OTP.buildKey(request.getOtpCode());
     if (!cacheService.exists(otpKey)) {
       throw new BusinessException(ErrorCode.OTP_INVALID);
     }
@@ -37,7 +38,7 @@ public class LinkTelegramHandler extends AbstractHandler<LinkTelegramRequest, Pr
   @Transactional
   public ProfileResponse doHandle(LinkTelegramRequest request) {
     // Get chat_id from OTP value in Redis
-    String otpKey = CacheKeyBuilder.telegramOtp(request.getOtpCode());
+    String otpKey = CacheKey.TELEGRAM_OTP.buildKey(request.getOtpCode());
     String chatId = cacheService.get(otpKey, String.class)
       .orElseThrow(() -> new BusinessException(ErrorCode.OTP_INVALID));
 
@@ -52,11 +53,5 @@ public class LinkTelegramHandler extends AbstractHandler<LinkTelegramRequest, Pr
     cacheService.delete(otpKey);
 
     return ProfileResponse.from(user);
-  }
-
-  @Override
-  public void postHandle(LinkTelegramRequest request, ProfileResponse response) {
-    // Invalidate user profile cache
-    cacheService.delete(CacheKeyBuilder.userProfile(request.getUserId()));
   }
 }

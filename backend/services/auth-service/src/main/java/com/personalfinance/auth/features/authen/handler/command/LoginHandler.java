@@ -10,7 +10,7 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
-import com.personalfinance.common.cache.key.CacheKeyBuilder;
+import com.personalfinance.common.cache.enums.CacheKey;
 import com.personalfinance.common.cache.service.CacheService;
 import com.personalfinance.common.security.jwt.JwtProperties;
 import com.personalfinance.common.security.jwt.JwtTokenProvider;
@@ -72,9 +72,9 @@ public class LoginHandler extends AbstractHandler<LoginRequest, AuthResponse> {
 
   @Override
   public void postHandle(LoginRequest request, AuthResponse response) {
-    // Cache user profile (TTL 30min)
+    // Cache user profile (TTL 30min) — this is cache WARMING, not eviction
     cacheService.set(
-      CacheKeyBuilder.userProfile(response.getUserId()),
+      CacheKey.USER_PROFILE.buildKey(response.getUserId()),
       ProfileResponse.builder()
         .id(response.getUserId())
         .email(response.getEmail())

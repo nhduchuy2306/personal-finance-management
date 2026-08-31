@@ -7,21 +7,19 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
-import com.personalfinance.common.cache.key.CacheKeyBuilder;
-import com.personalfinance.common.cache.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Update profile handler — updates user in DB, invalidates cache in postHandle.
+ * Update profile handler — updates user in DB.
+ * Cache eviction is handled automatically by CacheAwareRepository + UserCacheEvictionRule.
  */
 @Component
 @RequiredArgsConstructor
 public class UpdateProfileHandler extends AbstractHandler<UpdateProfileRequest, ProfileResponse> {
 
   private final UserRepository userRepository;
-  private final CacheService cacheService;
 
   @Override
   @Transactional
@@ -39,11 +37,5 @@ public class UpdateProfileHandler extends AbstractHandler<UpdateProfileRequest, 
 
     user = userRepository.save(user);
     return ProfileResponse.from(user);
-  }
-
-  @Override
-  public void postHandle(UpdateProfileRequest request, ProfileResponse response) {
-    // Invalidate user profile cache
-    cacheService.delete(CacheKeyBuilder.userProfile(request.getUserId()));
   }
 }
