@@ -54,6 +54,9 @@ public enum CacheKey implements CacheKeyDefinition {
   // ── Receipt OCR status ──
   RECEIPT_STATUS("receipt:status:%s", EvictStrategy.EXACT),
 
+  // ── System Config ──
+  SYSTEM_CONFIG("system:config:%s", EvictStrategy.EXACT),
+
   // ── Session management ──
   SESSION("session:%s", EvictStrategy.EXACT),
   ;

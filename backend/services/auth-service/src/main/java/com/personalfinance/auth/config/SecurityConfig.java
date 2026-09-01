@@ -41,6 +41,8 @@ public class SecurityConfig {
         ).permitAll()
         // Actuator — public (health checks, etc.)
         .requestMatchers("/actuator/**").permitAll()
+        // System config admin endpoints — require authentication
+        .requestMatchers("/api/v1/system-config/**").authenticated()
         // Everything else requires authentication
         .anyRequest().authenticated()
       )

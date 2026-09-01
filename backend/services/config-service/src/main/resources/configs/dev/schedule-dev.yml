@@ -1,0 +1,16 @@
+# ── Quartz Scheduler ──
+spring:
+  quartz:
+    job-store-type: memory
+    properties:
+      org.quartz.threadPool.threadCount: 3
+      org.quartz.scheduler.instanceName: ${spring.application.name}-scheduler
+
+# ── Cron expressions for scheduled jobs ──
+# Format: second minute hour day-of-month month day-of-week
+# Override per service in {service-name}-dev.yml if needed
+app:
+  schedule:
+    system-config-warm-up: "0 0 3 * * ?"
+    # future jobs — thêm ở đây khi cần:
+    # bill-reminder-check: "0 0 8 * * ?"

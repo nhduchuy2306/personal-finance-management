@@ -7,23 +7,23 @@ import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.base.handler.AbstractHandler;
 import com.personalfinance.common.cache.enums.CacheKey;
+import com.personalfinance.common.cache.enums.ConfigName;
 import com.personalfinance.common.cache.service.CacheService;
+import com.personalfinance.common.cache.systemconfig.SystemConfigReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-
 /**
- * Get profile handler — reads from Redis cache first (user:{id}, TTL 30min),
+ * Get profile handler — reads from Redis cache first (user:{id}, TTL from system config),
  * falls back to DB on cache miss.
  */
 @Component
 @RequiredArgsConstructor
 public class GetProfileHandler extends AbstractHandler<GetProfileRequest, ProfileResponse> {
 
-  private static final Duration CACHE_TTL = Duration.ofMinutes(30);
   private final UserRepository userRepository;
   private final CacheService cacheService;
+  private final SystemConfigReader systemConfigReader;
 
   @Override
   public ProfileResponse doHandle(GetProfileRequest request) {
@@ -37,9 +37,11 @@ public class GetProfileHandler extends AbstractHandler<GetProfileRequest, Profil
           .map(ProfileResponse::from)
           .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // Cache the result
-        cacheService.set(cacheKey, profile, CACHE_TTL);
+        // Cache the result — TTL from system config
+        cacheService.set(cacheKey, profile,
+          systemConfigReader.getAsDuration(ConfigName.CACHE_TTL_USER_PROFILE));
         return profile;
       });
   }
 }
+

@@ -9,14 +9,14 @@ import com.personalfinance.auth.repository.UserRepository;
 import com.personalfinance.common.base.exception.BusinessException;
 import com.personalfinance.common.base.exception.ErrorCode;
 import com.personalfinance.common.cache.enums.CacheKey;
+import com.personalfinance.common.cache.enums.ConfigName;
 import com.personalfinance.common.cache.service.CacheService;
+import com.personalfinance.common.cache.systemconfig.SystemConfigReader;
 import com.personalfinance.common.security.jwt.JwtProperties;
 import com.personalfinance.common.security.jwt.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Duration;
 
 /**
  * Login handler — verifies email+password, delegates token generation to AbstractAuthHandler,
@@ -27,16 +27,19 @@ public class LoginHandler extends AbstractAuthHandler<LoginRequest> {
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final SystemConfigReader systemConfigReader;
 
   public LoginHandler(RefreshTokenRepository refreshTokenRepository,
                       JwtTokenProvider jwtTokenProvider,
                       JwtProperties jwtProperties,
                       CacheService cacheService,
                       UserRepository userRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      SystemConfigReader systemConfigReader) {
     super(refreshTokenRepository, jwtTokenProvider, jwtProperties, cacheService);
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
+    this.systemConfigReader = systemConfigReader;
   }
 
   @Override
@@ -54,7 +57,7 @@ public class LoginHandler extends AbstractAuthHandler<LoginRequest> {
 
   @Override
   public void postHandle(LoginRequest request, AuthResponse response) {
-    // Cache user profile (TTL 30min) — this is cache WARMING, not eviction
+    // Cache user profile — TTL from system config, this is cache WARMING, not eviction
     cacheService.set(
       CacheKey.USER_PROFILE.buildKey(response.getUserId()),
       ProfileResponse.builder()
@@ -62,7 +65,7 @@ public class LoginHandler extends AbstractAuthHandler<LoginRequest> {
         .email(response.getEmail())
         .displayName(response.getDisplayName())
         .build(),
-      Duration.ofMinutes(30)
+      systemConfigReader.getAsDuration(ConfigName.CACHE_TTL_USER_PROFILE)
     );
   }
 }

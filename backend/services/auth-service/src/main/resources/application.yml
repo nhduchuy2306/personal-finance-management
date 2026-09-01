@@ -7,5 +7,5 @@ spring:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:9888
   cloud:
     config:
-      name: ${spring.application.name}, db-config, cache, kafka, discovery, logging
+      name: ${spring.application.name}, db-config, cache, kafka, discovery, logging, schedule
       fail-fast: false
