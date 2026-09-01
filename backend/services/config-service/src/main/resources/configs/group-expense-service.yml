@@ -1,9 +1,9 @@
 server:
-  port: 8085
+  port: 9085
 
 grpc:
   server:
-    port: 28085
+    port: 29085
 
 app:
   jwt:

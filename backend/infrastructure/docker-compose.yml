@@ -31,7 +31,7 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://pf-kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
@@ -43,8 +43,7 @@ services:
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qg'
     ports:
       - "9092:9092"
-    volumes:
-      - kafka_data:/tmp/kraft-combined-logs
+
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1" ]
       interval: 15s
@@ -72,32 +71,12 @@ services:
     networks:
       - pf-network
 
-  redis-replica-1:
-    image: redis:7-alpine
-    container_name: pf-redis-replica-1
-    command: redis-server --appendonly yes --replicaof redis-master 6379
-    depends_on:
-      redis-master:
-        condition: service_healthy
-    networks:
-      - pf-network
-
-  redis-replica-2:
-    image: redis:7-alpine
-    container_name: pf-redis-replica-2
-    command: redis-server --appendonly yes --replicaof redis-master 6379
-    depends_on:
-      redis-master:
-        condition: service_healthy
-    networks:
-      - pf-network
-
   redis-sentinel-1:
     image: redis:7-alpine
     container_name: pf-redis-sentinel-1
-    command: redis-sentinel /etc/redis/sentinel.conf
+    command: sh -c "cp /tmp/sentinel.conf /data/sentinel.conf && redis-sentinel /data/sentinel.conf"
     volumes:
-      - ./redis-sentinel/sentinel.conf:/etc/redis/sentinel.conf
+      - ./redis-sentinel/sentinel.conf:/tmp/sentinel.conf:ro
     ports:
       - "26379:26379"
     depends_on:
@@ -109,9 +88,9 @@ services:
   redis-sentinel-2:
     image: redis:7-alpine
     container_name: pf-redis-sentinel-2
-    command: redis-sentinel /etc/redis/sentinel.conf
+    command: sh -c "cp /tmp/sentinel.conf /data/sentinel.conf && redis-sentinel /data/sentinel.conf"
     volumes:
-      - ./redis-sentinel/sentinel2.conf:/etc/redis/sentinel.conf
+      - ./redis-sentinel/sentinel2.conf:/tmp/sentinel.conf:ro
     ports:
       - "26380:26379"
     depends_on:
@@ -123,9 +102,9 @@ services:
   redis-sentinel-3:
     image: redis:7-alpine
     container_name: pf-redis-sentinel-3
-    command: redis-sentinel /etc/redis/sentinel.conf
+    command: sh -c "cp /tmp/sentinel.conf /data/sentinel.conf && redis-sentinel /data/sentinel.conf"
     volumes:
-      - ./redis-sentinel/sentinel3.conf:/etc/redis/sentinel.conf
+      - ./redis-sentinel/sentinel3.conf:/tmp/sentinel.conf:ro
     ports:
       - "26381:26379"
     depends_on:
@@ -157,7 +136,6 @@ services:
     networks:
       - pf-network
 
-
   # ══════════════════════════════════════════════════════════
   #  MICROSERVICES — Boot Order: Discovery → Config → Business → Gateway
   # ══════════════════════════════════════════════════════════
@@ -165,14 +143,11 @@ services:
   # ── 1. Discovery Service (Eureka) ──────────────────────
   discovery-service:
     build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: discovery-service
-    image: pf/discovery-service:latest
+      context: ../services/discovery-service
+      dockerfile: Dockerfile
     container_name: pf-discovery
     ports:
-      - "8761:8761"
+      - "9761:9761"
       - "5001:5005"
     volumes:
       - ./configs/discovery-service/application.yml:/app/config/application.yml:ro
@@ -180,7 +155,7 @@ services:
       JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
       DEBUG_SUSPEND: "n"
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9761/actuator/health || exit 1" ]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -191,14 +166,11 @@ services:
   # ── 2. Config Service (Spring Cloud Config) ────────────
   config-service:
     build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: config-service
-    image: pf/config-service:latest
+      context: ../services/config-service
+      dockerfile: Dockerfile
     container_name: pf-config
     ports:
-      - "8888:8888"
+      - "9888:9888"
       - "5002:5005"
     volumes:
       - ./configs/config-service/application.yml:/app/config/application.yml:ro
@@ -210,7 +182,7 @@ services:
       discovery-service:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9888/actuator/health || exit 1" ]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -221,21 +193,19 @@ services:
   # ── 3. Auth Service ────────────────────────────────────
   auth-service:
     build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: auth-service
-    image: pf/auth-service:latest
+      context: ../services/auth-service
+      dockerfile: Dockerfile
     container_name: pf-auth
     ports:
-      - "8081:8081"
-      - "28081:28081"
+      - "9081:9081"
+      - "29081:29081"
       - "5003:5005"
     volumes:
       - ./configs/auth-service/application.yml:/app/config/application.yml:ro
     environment:
       JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
       SPRING_PROFILES_ACTIVE: stag
+      CONFIG_SERVER_HOST: pf-config
       DEBUG_SUSPEND: "n"
       JWT_SECRET: docker-dev-secret-key-change-in-production-must-be-long-enough-256-bits
       TELEGRAM_BOT_TOKEN: ""
@@ -249,265 +219,7 @@ services:
       redis-sentinel-1:
         condition: service_started
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 4. Budget Service ──────────────────────────────────
-  budget-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: budget-service
-    image: pf/budget-service:latest
-    container_name: pf-budget
-    ports:
-      - "8082:8082"
-      - "28082:28082"
-      - "5004:5005"
-    volumes:
-      - ./configs/budget-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      DEBUG_SUSPEND: "n"
-      SPRING_PROFILES_ACTIVE: stag
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 5. Transaction Service ─────────────────────────────
-  transaction-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: transaction-service
-    image: pf/transaction-service:latest
-    container_name: pf-transaction
-    ports:
-      - "8083:8083"
-      - "28083:28083"
-      - "5005:5005"
-    volumes:
-      - ./configs/transaction-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      DEBUG_SUSPEND: "n"
-      SPRING_PROFILES_ACTIVE: stag
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 6. OCR Service ─────────────────────────────────────
-  ocr-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: ocr-service
-    image: pf/ocr-service:latest
-    container_name: pf-ocr
-    ports:
-      - "8084:8084"
-      - "5006:5005"
-    volumes:
-      - ./configs/ocr-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      DEBUG_SUSPEND: "n"
-      SPRING_PROFILES_ACTIVE: stag
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 7. Group Expense Service ───────────────────────────
-  group-expense-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: group-expense-service
-    image: pf/group-expense-service:latest
-    container_name: pf-group-expense
-    ports:
-      - "8085:8085"
-      - "28085:28085"
-      - "5007:5005"
-    volumes:
-      - ./configs/group-expense-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      SPRING_PROFILES_ACTIVE: stag
-      DEBUG_SUSPEND: "n"
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 8. Notification Service ────────────────────────────
-  notification-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: notification-service
-    image: pf/notification-service:latest
-    container_name: pf-notification
-    ports:
-      - "8086:8086"
-      - "5008:5005"
-    volumes:
-      - ./configs/notification-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      SPRING_PROFILES_ACTIVE: stag
-      DEBUG_SUSPEND: "n"
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 9. Recurring Bill Service ──────────────────────────
-  recurring-bill-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: recurring-bill-service
-    image: pf/recurring-bill-service:latest
-    container_name: pf-recurring-bill
-    ports:
-      - "8087:8087"
-      - "28087:28087"
-      - "5009:5005"
-    volumes:
-      - ./configs/recurring-bill-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      SPRING_PROFILES_ACTIVE: stag
-      DEBUG_SUSPEND: "n"
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8087/actuator/health || exit 1" ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    networks:
-      - pf-network
-
-  # ── 10. Saving Service ─────────────────────────────────
-  saving-service:
-    build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: saving-service
-    image: pf/saving-service:latest
-    container_name: pf-saving
-    ports:
-      - "8088:8088"
-      - "5010:5005"
-    volumes:
-      - ./configs/saving-service/application.yml:/app/config/application.yml:ro
-    environment:
-      JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
-      DEBUG_SUSPEND: "n"
-      SPRING_PROFILES_ACTIVE: stag
-    depends_on:
-      config-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis-sentinel-1:
-        condition: service_started
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8088/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9081/actuator/health || exit 1" ]
       interval: 20s
       timeout: 10s
       retries: 10
@@ -518,26 +230,24 @@ services:
   # ── 11. API Gateway (last to start) ────────────────────
   api-gateway:
     build:
-      context: ..
-      dockerfile: infrastructure/docker/Dockerfile
-      args:
-        SERVICE_NAME: api-gateway
-    image: pf/api-gateway:latest
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
     container_name: pf-gateway
     ports:
-      - "8080:8080"
+      - "9080:9080"
       - "5011:5005"
     volumes:
       - ./configs/api-gateway/application.yml:/app/config/application.yml:ro
     environment:
       JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
       SPRING_PROFILES_ACTIVE: stag
+      CONFIG_SERVER_HOST: pf-config
       DEBUG_SUSPEND: "n"
     depends_on:
       config-service:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9080/actuator/health || exit 1" ]
       interval: 20s
       timeout: 10s
       retries: 10
@@ -547,7 +257,6 @@ services:
 
 volumes:
   postgres_data:
-  kafka_data:
   redis_master_data:
   minio_data:
 

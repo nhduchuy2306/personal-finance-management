@@ -1,11 +1,9 @@
-# ── Discovery Service — Docker config override ──
-# Standalone Eureka server, no external dependencies
 spring:
   application:
     name: discovery-service
 
 server:
-  port: 8761
+  port: 9761
 
 eureka:
   client:

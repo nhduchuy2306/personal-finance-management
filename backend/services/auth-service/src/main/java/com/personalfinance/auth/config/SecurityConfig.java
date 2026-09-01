@@ -1,8 +1,7 @@
-package com.personalfinance.common.security.config;
+package com.personalfinance.auth.config;
 
 import com.personalfinance.common.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,32 +14,34 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Base security configuration — stateless JWT auth.
- * Services can override this by defining their own SecurityFilterChain bean.
+ * Security configuration for auth-service.
+ * Permits public access to auth endpoints (login/register/refresh/logout) and Swagger,
+ * requires authentication for everything else (profile, telegram, etc.).
  */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-public class BaseSecurityConfig {
+public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @Bean
-  @ConditionalOnMissingBean(SecurityFilterChain.class)
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
       .csrf(AbstractHttpConfigurer::disable)
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-        // Public endpoints
+        // Auth endpoints — public
+        .requestMatchers("/api/v1/auth/**").permitAll()
+        // Swagger / OpenAPI — public
         .requestMatchers(
-          "/api/v1/auth/**",
-          "/actuator/**",
           "/swagger-ui/**",
-          "/v3/api-docs/**",
-          "/swagger-ui.html"
+          "/swagger-ui.html",
+          "/v3/api-docs/**"
         ).permitAll()
-        // All other endpoints require authentication
+        // Actuator — public (health checks, etc.)
+        .requestMatchers("/actuator/**").permitAll()
+        // Everything else requires authentication
         .anyRequest().authenticated()
       )
       .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -49,7 +50,6 @@ public class BaseSecurityConfig {
   }
 
   @Bean
-  @ConditionalOnMissingBean(PasswordEncoder.class)
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }

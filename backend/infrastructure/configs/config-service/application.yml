@@ -1,8 +1,5 @@
-# ── Config Service — Docker config override ──
-# Reads config data from mounted volume instead of classpath
-# Registers with Eureka via Docker network
 server:
-  port: 8888
+  port: 9888
 
 spring:
   application:
@@ -20,6 +17,6 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://pf-discovery:8761/eureka/
+      defaultZone: http://pf-discovery:9761/eureka/
   instance:
     prefer-ip-address: true

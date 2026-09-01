@@ -4,6 +4,7 @@ import com.personalfinance.common.cache.eviction.EntityChangedEvent;
 import jakarta.persistence.EntityManager;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
@@ -11,15 +12,13 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 public class CacheAwareRepositoryImpl<T, ID> extends SimpleJpaRepository<T, ID>
   implements CacheAwareRepository<T, ID> {
 
-  private final ApplicationEventPublisher eventPublisher;
+  @Autowired
+  private ApplicationEventPublisher eventPublisher;
   private final JpaEntityInformation<T, ID> entityInformation;
 
-  public CacheAwareRepositoryImpl(JpaEntityInformation<T, ID> entityInformation,
-                                  EntityManager em,
-                                  ApplicationEventPublisher eventPublisher) {
+  public CacheAwareRepositoryImpl(JpaEntityInformation<T, ID> entityInformation, EntityManager em) {
     super(entityInformation, em);
     this.entityInformation = entityInformation;
-    this.eventPublisher = eventPublisher;
   }
 
   @Override
