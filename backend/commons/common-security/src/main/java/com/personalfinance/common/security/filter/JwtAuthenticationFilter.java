@@ -19,20 +19,29 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
- * JWT authentication filter.
- * Extracts Bearer token, validates JWT signature, checks session in Redis,
- * then sets SecurityContext and UserContext.
+ * Dual-mode JWT authentication filter.
  *
- * <p>Session validation: After JWT is valid, checks if the session (sid claim)
- * still exists in Redis. If not (user logged out), authentication is rejected.
+ * <p>Mode 1 — Gateway-authenticated (X-User-Id header present):
+ * The API Gateway has already validated the JWT and checked the Redis session.
+ * This filter trusts the X-User-Id header and sets SecurityContext + UserContext directly.
+ * No JWT parsing or Redis calls needed.
+ *
+ * <p>Mode 2 — Direct call (no X-User-Id header, has Authorization header):
+ * For local development / testing when calling services directly without Gateway.
+ * Validates JWT signature, checks Redis session, then sets SecurityContext + UserContext.
+ *
+ * <p>Priority: X-User-Id header → JWT token → unauthenticated
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final String HEADER_USER_ID = "X-User-Id";
 
   private final JwtTokenValidator tokenValidator;
   private final CacheService cacheService;
@@ -43,25 +52,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                   @NonNull FilterChain filterChain)
     throws ServletException, IOException {
     try {
-      String token = extractToken(request);
-      if (token != null && tokenValidator.isTokenValid(token)) {
-        UUID userId = tokenValidator.extractUserId(token);
-        String sessionId = tokenValidator.extractSessionId(token);
+      String gatewayUserId = request.getHeader(HEADER_USER_ID);
 
-        // Validate session — if sessionId is present, check it exists in Redis
-        if (sessionId != null
-          && !cacheService.exists(CacheKey.SESSION.buildKey(sessionId))) {
-          log.debug("Session {} has been invalidated (logged out)", sessionId);
-          // Skip authentication — user is logged out
-        } else {
-          String email = tokenValidator.extractEmail(token);
-
-          UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-          SecurityContextHolder.getContext().setAuthentication(authentication);
-
-          UserContext.set(userId);
-        }
+      if (StringUtils.hasText(gatewayUserId)) {
+        // Mode 1: Request from Gateway — already authenticated, trust header
+        authenticateFromGateway(gatewayUserId);
+      } else {
+        // Mode 2: Direct call — validate JWT
+        authenticateFromJwt(request);
       }
     } catch (Exception e) {
       log.debug("JWT authentication failed: {}", e.getMessage());
@@ -72,6 +70,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } finally {
       UserContext.clear();
     }
+  }
+
+  /**
+   * Gateway-authenticated mode: trust X-User-Id header, set SecurityContext + UserContext.
+   */
+  private void authenticateFromGateway(String userIdStr) {
+    try {
+      UUID userId = UUID.fromString(userIdStr);
+      setAuthentication(userId);
+      log.debug("Authenticated from Gateway header: userId={}", userId);
+    } catch (IllegalArgumentException e) {
+      log.warn("Invalid X-User-Id header value: {}", userIdStr);
+    }
+  }
+
+  /**
+   * Direct call mode: extract Bearer token, validate JWT, check Redis session.
+   */
+  private void authenticateFromJwt(HttpServletRequest request) {
+    String token = extractToken(request);
+    if (Objects.isNull(token) || !tokenValidator.isTokenValid(token)) {
+      return;
+    }
+
+    UUID userId = tokenValidator.extractUserId(token);
+    String sessionId = tokenValidator.extractSessionId(token);
+
+    // Validate session — if sessionId is present, check it exists in Redis
+    if (Objects.nonNull(sessionId)
+      && !cacheService.exists(CacheKey.SESSION.buildKey(sessionId))) {
+      log.debug("Session {} has been invalidated (logged out)", sessionId);
+      return;
+    }
+
+    setAuthentication(userId);
+  }
+
+  private void setAuthentication(UUID userId) {
+    UsernamePasswordAuthenticationToken authentication =
+      new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+    UserContext.set(userId);
   }
 
   private String extractToken(HttpServletRequest request) {
